@@ -1,0 +1,87 @@
+// Demo: управление умной теплицей
+
+sensor temp: float from "T1";
+sensor humid: float from "H1";
+
+actuator heater: bool to "HEAT1";
+actuator fan: bool to "FAN1";
+actuator light: bool to "LIGHT1";
+
+// Процесс вычисления скользящего среднего по температуре
+process AvgTemp(in s: stream<float>, out m: stream<float>) {
+    window 10 min;
+    emit mean(s);
+}
+
+// Процесс-контроллер: по средней температуре выбирает режим
+// 0 = DAY, 1 = HEAT, 2 = VENT
+process TempController(in t: stream<float>, out mode: stream<int>) {
+    if (t > 28.0) {
+        mode = 2;
+    } else {
+        if (t < 20.0) {
+            mode = 1;
+        } else {
+            mode = 0;
+        }
+    }
+
+    emit mode;
+}
+
+// Конечный автомат режимов теплицы
+fsm GreenhouseFSM {
+
+    state DAY {
+        on enter {
+            heater = false;
+            fan = false;
+            light = true;
+        }
+
+        when mode == 2 -> VENT;
+        when mode == 1 -> HEAT;
+        // упрощённо считаем, что "ночь" не наступает
+    }
+
+    state HEAT {
+        on enter {
+            heater = true;
+            fan = false;
+            light = true;
+        }
+
+        when mode == 0 -> DAY;
+        when mode == 2 -> VENT;
+    }
+
+    state VENT {
+        on enter {
+            heater = false;
+            fan = true;
+            light = true;
+        }
+
+        when mode == 0 -> DAY;
+        when mode == 1 -> HEAT;
+    }
+
+    state NIGHT {
+        on enter {
+            heater = false;
+            fan = false;
+            light = false;
+        }
+
+        when mode != 0 -> DAY;
+    }
+}
+
+// Связываем всё в системе
+system Greenhouse {
+    connect temp -> AvgTemp.s;
+    connect AvgTemp.m -> TempController.t;
+    connect TempController.mode -> GreenhouseFSM.mode;
+
+    run fsm GreenhouseFSM;
+}
