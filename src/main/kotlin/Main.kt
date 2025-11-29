@@ -1,12 +1,12 @@
 // src/main/kotlin/Main.kt
-package org.example
 
 import gen.GreenLangLexer
 import gen.GreenLangParser
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.tree.ParseTree
-import org.example.ast.Program
+import org.antlr.v4.runtime.tree.TerminalNode
 
 fun main(args: Array<String>) {
     // Если путь к файлу передали аргументом — берём его,
@@ -61,6 +61,6 @@ private fun prettyTree(tree: ParseTree, parser: GreenLangParser): String {
 
 private fun ParseTree.textFor(parser: GreenLangParser): String =
     when (this) {
-        is org.antlr.v4.runtime.tree.TerminalNode -> this.text
-        else -> parser.ruleNames[(this as org.antlr.v4.runtime.RuleContext).ruleIndex]
+        is TerminalNode -> this.text
+        else -> parser.ruleNames[(this as RuleContext).ruleIndex]
     }

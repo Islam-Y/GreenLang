@@ -1,10 +1,11 @@
-package org.example
-
 import gen.GreenLangBaseVisitor
 import gen.GreenLangParser
 import org.antlr.v4.runtime.tree.TerminalNode
-import org.example.ast.*
 
+/**
+ * Строит независимый AST из parse tree ANTLR.
+ * Покрывает верхнеуровневые декларации, минимальные выражения и стейтменты (assign/emit/if).
+ */
 class AstBuilder : GreenLangBaseVisitor<Any?>() {
 
     fun buildProgram(ctx: GreenLangParser.ProgramContext): Program {
@@ -56,9 +57,8 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
             ?.map { visitProcessParam(it) }
             ?: emptyList()
 
-        // Пока тело процесса не разбираем, просто сохраняем исходный текст блока
-        val bodyText = ctx.block().text
-        return ProcessDecl(name, params, body = listOf(bodyText))
+        val body = buildBlock(ctx.block())
+        return ProcessDecl(name, params, body = body)
     }
 
     override fun visitProcessParam(ctx: GreenLangParser.ProcessParamContext): ProcessParam {
@@ -71,6 +71,58 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         // grammar: 'stream' '<' typeRef '>' — оборачиваем inner в StreamType
         val elementType = visitTypeRef(ctx.typeRef())
         return ProcessParam(dir, name, StreamType(elementType))
+    }
+
+    // -------------------------
+    // Стейтменты и выражения
+    // -------------------------
+
+    private fun buildBlock(blockCtx: GreenLangParser.BlockContext): List<Stmt> =
+        blockCtx.statement().mapNotNull { buildStmt(it) }
+
+    private fun buildStmt(ctx: GreenLangParser.StatementContext): Stmt? {
+        ctx.windowStmt()?.let { return NoOpStmt } // игнорируем окно в MVP
+        ctx.emitStmt()?.let { return Emit(buildExpr(it.expr())) }
+        ctx.assignment()?.let {
+            val name = it.ID().text
+            return Assign(name, buildExpr(it.expr()))
+        }
+        ctx.ifStmt()?.let { return buildIfStmt(it) }
+        ctx.exprStmt()?.let { return NoOpStmt } // не поддерживаем отдельные выражения
+        // пустая строка ";" — null
+        return null
+    }
+
+    private fun buildIfStmt(ctx: GreenLangParser.IfStmtContext): IfStmt {
+        val cond = buildExpr(ctx.expr())
+        val thenBranch = buildBlock(ctx.block(0))
+        val elseBranch = ctx.block(1)?.let { buildBlock(it) }
+        return IfStmt(cond, thenBranch, elseBranch)
+    }
+
+    private fun buildExpr(ctx: GreenLangParser.ExprContext): Expr {
+        return when (ctx) {
+            is GreenLangParser.AddSubExprContext -> BinOp(buildExpr(ctx.expr(0)), ctx.op.text, buildExpr(ctx.expr(1)))
+            is GreenLangParser.MulDivExprContext -> BinOp(buildExpr(ctx.expr(0)), ctx.op.text, buildExpr(ctx.expr(1)))
+            is GreenLangParser.RelExprContext -> BinOp(buildExpr(ctx.expr(0)), ctx.op.text, buildExpr(ctx.expr(1)))
+            is GreenLangParser.EqExprContext -> BinOp(buildExpr(ctx.expr(0)), ctx.op.text, buildExpr(ctx.expr(1)))
+            is GreenLangParser.LogicExprContext -> BinOp(buildExpr(ctx.expr(0)), ctx.op.text, buildExpr(ctx.expr(1)))
+            is GreenLangParser.ParenExprContext -> buildExpr(ctx.expr())
+            is GreenLangParser.CallExprContext -> {
+                // Для MVP: считаем вызов VarRef по имени функции, аргументы игнорируем
+                VarRef(ctx.functionCall().ID().text)
+            }
+            is GreenLangParser.PrimaryExprContext -> buildPrimary(ctx.primary())
+            else -> error("Unsupported expr: ${ctx.text}")
+        }
+    }
+
+    private fun buildPrimary(ctx: GreenLangParser.PrimaryContext): Expr {
+        ctx.INT_LITERAL()?.let { return IntLit(it.text.toInt()) }
+        ctx.FLOAT_LITERAL()?.let { return FloatLit(it.text.toDouble()) }
+        ctx.BOOL_LITERAL()?.let { return BoolLit(it.text.toBooleanStrict()) }
+        ctx.ID()?.let { return VarRef(it.text) }
+        error("Unsupported primary: ${ctx.text}")
     }
 
     override fun visitFsmDecl(ctx: GreenLangParser.FsmDeclContext): Any {

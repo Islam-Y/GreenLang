@@ -1,5 +1,3 @@
-package org.example.ast
-
 sealed interface TopLevelDecl
 
 data class Program(
@@ -29,11 +27,10 @@ data object StringType : TypeRef
 data class StreamType(val elementType: TypeRef) : TypeRef
 
 // process ... { ... }
-// Пока тело процесса не разбираем, просто сохраняем исходный текст блока
 data class ProcessDecl(
     val name: String,
     val params: List<ProcessParam>,
-    val body: List<String>
+    val body: List<Stmt>
 ) : TopLevelDecl
 
 data class ProcessParam(
@@ -81,3 +78,20 @@ data class Endpoint(
 data class RunFsmDecl(
     val fsmName: String
 ) : TopLevelDecl
+
+// -------------------------
+// Императивные выражения/операторы (минимальный набор)
+// -------------------------
+
+sealed interface Expr
+data class VarRef(val name: String) : Expr
+data class IntLit(val value: Int) : Expr
+data class FloatLit(val value: Double) : Expr
+data class BoolLit(val value: Boolean) : Expr
+data class BinOp(val left: Expr, val op: String, val right: Expr) : Expr
+
+sealed interface Stmt
+data class Assign(val name: String, val expr: Expr) : Stmt
+data class Emit(val expr: Expr) : Stmt
+data class IfStmt(val condition: Expr, val thenBranch: List<Stmt>, val elseBranch: List<Stmt>?) : Stmt
+data object NoOpStmt : Stmt
