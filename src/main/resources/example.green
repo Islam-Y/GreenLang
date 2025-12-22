@@ -1,4 +1,4 @@
-// Demo: управление умной теплицей
+// управление умной теплицей
 
 sensor temp: float from "T1";
 sensor humid: float from "H1";
