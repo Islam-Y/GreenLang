@@ -1,13 +1,17 @@
+//формальное описание синтаксиса языка (грамматика)
+
 grammar GreenLang;
 
 // -------------------------
 // Parser rules
 // -------------------------
 
+// точка входа программы
 program
     : topLevelDecl* EOF
     ;
 
+// верхнеуровневое объявление
 topLevelDecl
     : sensorDecl
     | actuatorDecl
@@ -16,10 +20,12 @@ topLevelDecl
     | systemDecl
     ;
 
+// объявление сенсора
 sensorDecl
     : 'sensor' ID ':' typeRef 'from' STRING_LITERAL ';'
     ;
 
+// объявление актуатора
 actuatorDecl
     : 'actuator' ID ':' typeRef 'to' STRING_LITERAL ';'
     ;
@@ -33,22 +39,27 @@ typeRef
     | 'stream' '<' typeRef '>'
     ;
 
+// объявление процесса
 processDecl
     : 'process' ID '(' processParams? ')' block
     ;
 
+// список параметров процесса
 processParams
     : processParam (',' processParam)*
     ;
 
+// параметр процесса
 processParam
     : ('in' | 'out') ID ':' 'stream' '<' typeRef '>'
     ;
 
+// блок операторов
 block
     : '{' statement* '}'
     ;
 
+// оператор
 statement
     : windowStmt
     | emitStmt
@@ -63,6 +74,7 @@ windowStmt
     : 'window' INT_LITERAL timeUnit ';'
     ;
 
+// единицы времени
 timeUnit
     : 'ms'
     | 'sec'
@@ -94,19 +106,23 @@ exprStmt
 // FSM
 // -------------------------
 
+// объявление конечного автомата
 fsmDecl
     : 'fsm' ID '{' stateDecl+ '}'
     ;
 
+// объявление состояния
 stateDecl
     : 'state' ID '{' stateItem* '}'
     ;
 
+// элемент состояния
 stateItem
     : onEnterBlock
     | whenTransition
     ;
 
+// обработчик входа в состояние
 onEnterBlock
     : 'on' 'enter' block
     ;
@@ -120,19 +136,23 @@ whenTransition
 // System
 // -------------------------
 
+// объявление системы
 systemDecl
     : 'system' ID '{' systemItem* '}'
     ;
 
+// элемент системы
 systemItem
     : connectStmt
     | runStmt
     ;
 
+// соединение компонентов
 connectStmt
     : 'connect' endpoint '->' endpoint ';'
     ;
 
+// ссылка на endpoint
 endpoint
     : ID ('.' ID)?
     ;
@@ -146,6 +166,7 @@ runStmt
 // Expressions
 // -------------------------
 
+// выражение с учетом приоритетов
 expr
     : expr op=('*'|'/') expr                # MulDivExpr
     | expr op=('+'|'-') expr                # AddSubExpr
@@ -157,10 +178,12 @@ expr
     | primary                               # PrimaryExpr
     ;
 
+// вызов функции
 functionCall
     : ID '(' (expr (',' expr)*)? ')'
     ;
 
+// первичное значение
 primary
     : INT_LITERAL
     | FLOAT_LITERAL
@@ -173,42 +196,51 @@ primary
 // Lexer rules
 // -------------------------
 
+// булев литерал
 BOOL_LITERAL
     : 'true'
     | 'false'
     ;
 
+// идентификатор
 ID
     : [a-zA-Z_][a-zA-Z0-9_]*
     ;
 
+// цифра
 fragment DIGIT
     : [0-9]
     ;
 
+// целое число
 INT_LITERAL
     : DIGIT+
     ;
 
+// вещественное число
 FLOAT_LITERAL
     : DIGIT+ '.' DIGIT* ([eE] [+\-]? DIGIT+)?    // 1.23, 1.23e-4
     | '.' DIGIT+ ([eE] [+\-]? DIGIT+)?          // .5, .5e1
     ;
 
+// строковый литерал
 STRING_LITERAL
     : '"' (~["\\] | '\\' .)* '"'
     ;
 
 // комментарии и пробелы
 
+// однострочный комментарий
 LINE_COMMENT
     : '//' ~[\r\n]* -> skip
     ;
 
+// блочный комментарий
 BLOCK_COMMENT
     : '/*' .*? '*/' -> skip
     ;
 
+// пробельные символы
 WS
     : [ \t\r\n]+ -> skip
     ;

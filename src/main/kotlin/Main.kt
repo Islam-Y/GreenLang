@@ -8,6 +8,9 @@ import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 
+/**
+ * Точка входа: парсит файл GreenLang и печатает AST для проверки синтаксиса.
+ */
 fun main(args: Array<String>) {
     // Если путь к файлу передали аргументом — берём его,
     // иначе — дефолтный example.green в ресурсах/рядом с проектом.
@@ -38,10 +41,14 @@ fun main(args: Array<String>) {
     println(programAst)
 }
 
+/**
+ * Строит наглядное дерево разбора для отладочного вывода.
+ */
 private fun prettyTree(tree: ParseTree, parser: GreenLangParser): String {
     val sb = StringBuilder()
     // корень без соединителя, дальше — ветки с псевдографикой
     sb.append(tree.textFor(parser)).append('\n')
+    // Рекурсивно обходит дерево и добавляет строки с отступами.
     fun visit(node: ParseTree, prefix: String, isTail: Boolean) {
         val connector = if (isTail) "└── " else "├── "
         sb.append(prefix).append(connector).append(node.textFor(parser)).append('\n')
@@ -59,6 +66,9 @@ private fun prettyTree(tree: ParseTree, parser: GreenLangParser): String {
     return sb.toString().trimEnd()
 }
 
+/**
+ * Возвращает текст узла: терминал или имя правила для нетерминала.
+ */
 private fun ParseTree.textFor(parser: GreenLangParser): String =
     when (this) {
         is TerminalNode -> this.text

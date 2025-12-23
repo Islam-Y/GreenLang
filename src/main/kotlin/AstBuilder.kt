@@ -8,11 +8,17 @@ import org.antlr.v4.runtime.tree.TerminalNode
  */
 class AstBuilder : GreenLangBaseVisitor<Any?>() {
 
+    /**
+     * Собирает корневой AST из контекста программы, чтобы получить список объявлений.
+     */
     fun buildProgram(ctx: GreenLangParser.ProgramContext): Program {
         val decls = ctx.topLevelDecl().map { visitTopLevelDecl(it) as TopLevelDecl }
         return Program(decls)
     }
 
+    /**
+     * Делегирует обработку верхнеуровневого правила на конкретный visitor.
+     */
     override fun visitTopLevelDecl(ctx: GreenLangParser.TopLevelDeclContext): Any {
         ctx.sensorDecl()?.let { return visitSensorDecl(it) }
         ctx.actuatorDecl()?.let { return visitActuatorDecl(it) }
@@ -23,6 +29,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         error("Unknown topLevelDecl: ${ctx.text}")
     }
 
+    /**
+     * Строит AST-узел сенсора из парсерного контекста.
+     */
     override fun visitSensorDecl(ctx: GreenLangParser.SensorDeclContext): Any {
         val name = ctx.ID().text
         val type = visitTypeRef(ctx.typeRef())
@@ -30,6 +39,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         return SensorDecl(name, type, sourceId)
     }
 
+    /**
+     * Строит AST-узел актуатора из парсерного контекста.
+     */
     override fun visitActuatorDecl(ctx: GreenLangParser.ActuatorDeclContext): Any {
         val name = ctx.ID().text
         val type = visitTypeRef(ctx.typeRef())
@@ -37,6 +49,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         return ActuatorDecl(name, type, targetId)
     }
 
+    /**
+     * Преобразует грамматический typeRef в соответствующий AST TypeRef.
+     */
     override fun visitTypeRef(ctx: GreenLangParser.TypeRefContext): TypeRef {
         // typeRef:
         //   'int' | 'float' | 'bool' | 'string' | 'stream' '<' typeRef '>'
@@ -50,6 +65,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         }
     }
 
+    /**
+     * Строит процесс с параметрами и телом из парсерного контекста.
+     */
     override fun visitProcessDecl(ctx: GreenLangParser.ProcessDeclContext): Any {
         val name = ctx.ID().text
         val params = ctx.processParams()
@@ -61,6 +79,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         return ProcessDecl(name, params, body = body)
     }
 
+    /**
+     * Преобразует параметр процесса, включая направление и тип потока.
+     */
     override fun visitProcessParam(ctx: GreenLangParser.ProcessParamContext): ProcessParam {
         val dir = when (ctx.getChild(0).text) {
             "in" -> ProcessParamDir.IN
@@ -77,9 +98,15 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
     // Стейтменты и выражения
     // -------------------------
 
+    /**
+     * Разворачивает блок в список операторов, фильтруя пустые.
+     */
     private fun buildBlock(blockCtx: GreenLangParser.BlockContext): List<Stmt> =
         blockCtx.statement().mapNotNull { buildStmt(it) }
 
+    /**
+     * Преобразует statement в AST-оператор, игнорируя неподдерживаемые.
+     */
     private fun buildStmt(ctx: GreenLangParser.StatementContext): Stmt? {
         ctx.windowStmt()?.let { return NoOpStmt } // игнорируем окно в MVP
         ctx.emitStmt()?.let { return Emit(buildExpr(it.expr())) }
@@ -93,6 +120,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         return null
     }
 
+    /**
+     * Строит IfStmt с then/else ветками.
+     */
     private fun buildIfStmt(ctx: GreenLangParser.IfStmtContext): IfStmt {
         val cond = buildExpr(ctx.expr())
         val thenBranch = buildBlock(ctx.block(0))
@@ -100,6 +130,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         return IfStmt(cond, thenBranch, elseBranch)
     }
 
+    /**
+     * Компилирует выражение в AST, сохраняя структуру и приоритеты.
+     */
     private fun buildExpr(ctx: GreenLangParser.ExprContext): Expr {
         return when (ctx) {
             is GreenLangParser.AddSubExprContext -> BinOp(buildExpr(ctx.expr(0)), ctx.op.text, buildExpr(ctx.expr(1)))
@@ -117,6 +150,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         }
     }
 
+    /**
+     * Преобразует primary в литерал или ссылку на переменную.
+     */
     private fun buildPrimary(ctx: GreenLangParser.PrimaryContext): Expr {
         ctx.INT_LITERAL()?.let { return IntLit(it.text.toInt()) }
         ctx.FLOAT_LITERAL()?.let { return FloatLit(it.text.toDouble()) }
@@ -125,12 +161,18 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         error("Unsupported primary: ${ctx.text}")
     }
 
+    /**
+     * Строит описание конечного автомата с его состояниями.
+     */
     override fun visitFsmDecl(ctx: GreenLangParser.FsmDeclContext): Any {
         val name = ctx.ID().text
         val states = ctx.stateDecl().map { visitStateDecl(it) }
         return FsmDecl(name, states)
     }
 
+    /**
+     * Собирает состояние FSM, выделяя onEnter и переходы.
+     */
     override fun visitStateDecl(ctx: GreenLangParser.StateDeclContext): StateDecl {
         val name = ctx.ID().text
         val onEnterBlocks = mutableListOf<String>()
@@ -150,6 +192,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         return StateDecl(name, onEnterBlocks, transitions)
     }
 
+    /**
+     * Собирает системные объявления connect/run в SystemDecl.
+     */
     override fun visitSystemDecl(ctx: GreenLangParser.SystemDeclContext): Any {
         val name = ctx.ID().text
         val connections = mutableListOf<ConnectionDecl>()
@@ -167,12 +212,18 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         return SystemDecl(name, connections, runs)
     }
 
+    /**
+     * Преобразует connect в ConnectionDecl.
+     */
     override fun visitConnectStmt(ctx: GreenLangParser.ConnectStmtContext): ConnectionDecl {
         val from = visitEndpoint(ctx.endpoint(0))
         val to = visitEndpoint(ctx.endpoint(1))
         return ConnectionDecl(from, to)
     }
 
+    /**
+     * Строит endpoint из пары ID[.ID] в виде объекта и опционального порта.
+     */
     override fun visitEndpoint(ctx: GreenLangParser.EndpointContext): Endpoint {
         val ids: List<TerminalNode> = ctx.ID()
         val obj = ids[0].text
@@ -180,6 +231,9 @@ class AstBuilder : GreenLangBaseVisitor<Any?>() {
         return Endpoint(obj, port)
     }
 
+    /**
+     * Удаляет внешние кавычки у строкового литерала.
+     */
     private fun stripQuotes(text: String): String =
         text.removePrefix("\"").removeSuffix("\"")
 }

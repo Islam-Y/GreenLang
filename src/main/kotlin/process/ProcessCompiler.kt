@@ -46,6 +46,9 @@ import org.example.process.ProcessProgram
  * Набор операторов/выражений, достаточный для TempController.
  */
 object ProcessCompiler {
+    /**
+     * Компилирует процесс в байткод ProcessProgram, чтобы его исполнила ProcessVm.
+     */
     fun compile(process: ProcessDecl): ProcessProgram {
         val inputs = process.params.filter { it.direction == ProcessParamDir.IN }
             .associate { it.name to unwrapStream(it.type) }
@@ -72,9 +75,15 @@ object ProcessCompiler {
         )
     }
 
+    /**
+     * Разворачивает stream<T> в T, чтобы оперировать типами значений.
+     */
     private fun unwrapStream(type: TypeRef): TypeRef =
         if (type is StreamType) type.elementType else type
 
+    /**
+     * Преобразует оператор в список инструкций с учётом таблицы символов.
+     */
     private fun compileStmt(stmt: Stmt, symbols: Map<String, TypeRef>, outputs: Set<String>): List<Instr> =
         when (stmt) {
             is Assign -> {
@@ -99,6 +108,9 @@ object ProcessCompiler {
             NoOpStmt -> emptyList()
         }
 
+    /**
+     * Компилирует if-ветвление, расставляя Jump/JumpIfFalse.
+     */
     private fun compileIf(stmt: IfStmt, symbols: Map<String, TypeRef>, outputs: Set<String>): List<Instr> {
         val code = mutableListOf<Instr>()
         val (condCode, _) = compileExpr(stmt.condition, symbols)
@@ -125,6 +137,9 @@ object ProcessCompiler {
 
     private data class ExprResult(val code: List<Instr>, val type: TypeRef)
 
+    /**
+     * Компилирует выражение в инструкции и вычисленный тип результата.
+     */
     private fun compileExpr(expr: Expr, symbols: Map<String, TypeRef>): ExprResult =
         when (expr) {
             is VarRef -> {
@@ -139,6 +154,9 @@ object ProcessCompiler {
             is BinOp -> compileBinOp(expr, symbols)
         }
 
+    /**
+     * Компилирует бинарную операцию, выбирая инструкцию по оператору и типам.
+     */
     private fun compileBinOp(bin: BinOp, symbols: Map<String, TypeRef>): ExprResult {
         val left = compileExpr(bin.left, symbols)
         val right = compileExpr(bin.right, symbols)
@@ -181,6 +199,9 @@ object ProcessCompiler {
         }
     }
 
+    /**
+     * Сдвигает относительные адреса переходов на заданный offset.
+     */
     private fun shiftJumps(code: List<Instr>, offset: Int): List<Instr> =
         code.map {
             when (it) {

@@ -49,9 +49,15 @@ class FsmVm(
     // простой стек для исполнения инструкций
     private val stack = ArrayDeque<Value>()
 
+    /**
+     * Возвращает имя текущего состояния, чтобы внешняя логика могла его читать.
+     */
     fun currentState(): String = currentStateName
 
     // Установить значение переменной (например, mode)
+    /**
+     * Записывает Int-переменную в окружение, чтобы условия могли её читать.
+     */
     fun setIntVar(name: String, value: Int) {
         env[name] = IntVal(value)
     }
@@ -84,6 +90,9 @@ class FsmVm(
         println("No transition fired from state $currentStateName")
     }
 
+    /**
+     * Выполняет onEnter-инструкции указанного состояния и печатает состояние актуаторов.
+     */
     private fun executeOnEnter(stateName: String) {
         val state = program.states[stateName]
             ?: error("Unknown state '$stateName'")
@@ -98,6 +107,9 @@ class FsmVm(
         }
     }
 
+    /**
+     * Вычисляет условие перехода, ожидая Bool на вершине стека.
+     */
     private fun evalCondition(instrs: List<Instr>): Boolean {
         stack.clear()
         executeInstrs(instrs)
@@ -110,6 +122,9 @@ class FsmVm(
         }
     }
 
+    /**
+     * Исполняет список инструкций, изменяя стек, окружение и актуаторы.
+     */
     private fun executeInstrs(instrs: List<Instr>) {
         for (ins in instrs) {
             when (ins) {

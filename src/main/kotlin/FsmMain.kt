@@ -9,7 +9,7 @@ import process.ProcessCompiler
 import org.example.process.ProcessVm
 
 /**
- * Демонстрация: парсим example.green -> AST -> компилируем FSM -> гоняем VM.
+ * Точка входа демо: парсит example.green, компилирует FSM/процесс и запускает VM.
  *
  * Ограничения: поддерживается только подмножество конструкций FSM, используемых в example.green.
  */

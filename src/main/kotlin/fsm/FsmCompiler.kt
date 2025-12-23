@@ -6,7 +6,7 @@ import StateDecl
 import SystemDecl
 
 /**
- * Компиляция AST конечного автомата в FsmProgram ("байткод").
+ * Компилирует AST конечного автомата в FsmProgram, чтобы получить байткод для FsmVm.
  *
  * Ограничения MVP: ожидаем один FsmDecl и один SystemDecl с одним run fsm.
  */
@@ -36,7 +36,9 @@ fun compileFsm(program: Program): FsmProgram {
     return FsmProgram(states = states, initialState = initialState)
 }
 
-// Компилируем одно состояние автомата
+/**
+ * Компилирует одно состояние автомата, чтобы получить onEnter и переходы.
+ */
 private fun compileState(state: StateDecl): CompiledState {
     val onEnterInstrs = mutableListOf<Instr>()
     val transitions = mutableListOf<CompiledTransition>()
@@ -61,8 +63,11 @@ private fun compileState(state: StateDecl): CompiledState {
     )
 }
 
-// Компилятор on enter блока.
-// Поддерживаем только присваивания actuator = true/false;
+/**
+ * Компилирует on-enter блок, чтобы превратить присваивания в инструкции.
+ *
+ * Поддерживаем только присваивания actuator = true/false.
+ */
 private fun compileOnEnterBlock(blockText: String): List<Instr> {
     val result = mutableListOf<Instr>()
 
@@ -95,7 +100,9 @@ private fun compileOnEnterBlock(blockText: String): List<Instr> {
     return result
 }
 
-// Компилируем условие вида "mode==2" или "mode != 0"
+/**
+ * Компилирует простое условие вида "mode==2" или "mode != 0" в список инструкций.
+ */
 private fun compileCondition(cond: String): List<Instr> {
     val text = cond.replace(" ", "")
 

@@ -33,6 +33,9 @@ class ProcessVm(private val program: ProcessProgram) {
     private val env: MutableMap<String, Value> = mutableMapOf()
     private val outputs: MutableMap<String, Value> = mutableMapOf()
 
+    /**
+     * Исполняет байткод процесса с заданными входами и возвращает выходные значения.
+     */
     fun run(inputs: Map<String, Value>, maxSteps: Int = 10_000): Map<String, Value> {
         env.clear()
         env.putAll(inputs)
